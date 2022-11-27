@@ -1,0 +1,39 @@
+inputs = {
+	nixpkgs = {
+		url = "github:NixOS/nixpkgs/nixpkgs-unstable"
+	}
+}
+
+env = {
+	GREET = "devenv"
+}
+
+packages = [
+	"git"
+]
+
+enterShell =
+	"
+	| hello
+	| git --version
+	"
+
+languages = {
+	nix = {
+		enable = true
+	}
+}
+
+scripts = {
+	hello = {
+		exec = "echo hello from $GREET"
+	}
+}
+
+"pre-commit" = {
+	hooks = {
+		shellcheck = {
+			enable = true
+		}
+	}
+}

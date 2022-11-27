@@ -19,20 +19,6 @@
         devenv = if builtins.pathExists ./.devenv/devenv.json
           then builtins.fromJSON (builtins.readFile ./.devenv/devenv.json)
           else {};
-        toModule = path:
-          if lib.hasPrefix "./" path
-          then ./. + (builtins.substring 1 255 path) + "/devenv.nix"
-          else if lib.hasPrefix "../" path 
-          then throw "devenv: ../ is not supported for imports"
-          else let
-            paths = lib.splitString "/" path;
-            name = builtins.head paths;
-            input = inputs.''${name} or (throw "Unknown input ''${name}");
-            subpath = "/''${lib.concatStringsSep "/" (builtins.tail paths)}";
-            devenvpath = "''${input}/" + subpath + "/devenv.nix";
-            in if (!devenv.inputs.''${name}.flake or true) && builtins.pathExists devenvpath
-               then devenvpath
-               else throw (devenvpath + " file does not exist for input ''${name}.");
         configToModule = config: args:
           let
             pkgs' = args.pkgs;
@@ -41,7 +27,7 @@
               packages = builtins.map
                 (name:
                   let
-                    parts = builtins.split "\\\\.";
+                    parts = builtins.split "\\\\." name;
                     parts' = builtins.foldl' (acc: part:
                       if builtins.isList part then
                         acc
@@ -57,10 +43,32 @@
                 )
                 config.packages;
             };
+        toModule = path:
+          if lib.hasPrefix "./" path
+          then ./. + (builtins.substring 1 255 path) + "/devenv.nix"
+          else if lib.hasPrefix "../" path 
+          then throw "devenv: ../ is not supported for imports"
+          else let
+            paths = lib.splitString "/" path;
+            name = builtins.head paths;
+            input = inputs.''${name} or (throw "Unknown input ''${name}");
+            subpath = "/''${lib.concatStringsSep "/" (builtins.tail paths)}";
+            devenvpath =
+              if builtins.pathExists "''${input}/" + subpath + "/devenv.nix" then
+                "''${input}/" + subpath + "/devenv.nix"
+              else if builtins.pathExists "''${input}/" + subpath + "/devenv.box" then
+                configToModule (dotbox.import 
+                  ("''${input}/" + subpath + "/devenv.box")
+                )
+              else
+                builtins.throw "No devenv.nix or devenv.box file found for input: ''${input}/.";
+            in if (!devenv.inputs.''${name}.flake or true) && builtins.pathExists devenvpath
+               then devenvpath
+               else throw (devenvpath + " file does not exist for input ''${name}.");
         userConfig =
-          if builtins.pathExists "${./.}/devenv.nix" then
+          if builtins.pathExists ./devenv.nix then
             ./devenv.nix
-          else if builtins.pathExists "${./.}/devenv.box" then
+          else if builtins.pathExists ./devenv.box then
             configToModule (dotbox.import ./devenv.box)
           else
             builtins.throw "No devenv.nix or devenv.box file found.";
