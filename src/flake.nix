@@ -5,13 +5,15 @@
       pre-commit-hooks.inputs.nixpkgs.follows = "nixpkgs";
       nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
       devenv.url = "github:cachix/devenv?dir=src/modules";
+      dotbox.url = "github:snowfallorg/dotbox";
+      dotbox.inputs.nixpkgs.follows = "nixpkgs";
     } // (if builtins.pathExists ./.devenv/devenv.json 
          then (builtins.fromJSON (builtins.readFile ./.devenv/devenv.json)).inputs
          else {});
 
     outputs = { nixpkgs, ... }@inputs:
       let
-        pkgs = import nixpkgs { system = "${pkgs.system}"; };
+        pkgs = import nixpkgs { system = "${pkgs.system}"; overlays = [ inputs.dotbox.overlay ]; };
         lib = pkgs.lib;
         devenv = if builtins.pathExists ./.devenv/devenv.json
           then builtins.fromJSON (builtins.readFile ./.devenv/devenv.json)

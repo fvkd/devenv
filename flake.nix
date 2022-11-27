@@ -13,8 +13,10 @@
     flake = false;
   };
   inputs.nix.url = "github:domenkozar/nix/relaxed-flakes";
+  inputs.dotbox.url = "github:snowfallorg/dotbox";
+  inputs.dotbox.inputs.nixpkgs.follows = "nixpkgs";
 
-  outputs = { self, nixpkgs, pre-commit-hooks, nix, ... }:
+  outputs = { self, nixpkgs, pre-commit-hooks, nix, dotbox, ... }:
     let
       systems = [ "x86_64-linux" "i686-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
       forAllSystems = f: builtins.listToAttrs (map (name: { inherit name; value = f name; }) systems);
@@ -34,7 +36,7 @@
     {
       packages = forAllSystems (system:
         let
-          pkgs = import nixpkgs { inherit system; };
+          pkgs = import nixpkgs { inherit system; overlays = [ dotbox.overlay ]; };
         in
         {
           devenv = mkPackage pkgs;

@@ -1,4 +1,4 @@
-{ pkgs, nix }:
+{ pkgs, nix, ... }:
 let
   examples = ../examples;
   lib = pkgs.lib;
@@ -29,6 +29,8 @@ pkgs.writeScriptBin "devenv" ''
     # TODO: validate devenv.yaml using jsonschema
     if [[ -f devenv.yaml ]]; then
       cat devenv.yaml | ${pkgs.yaml2json}/bin/yaml2json > "$DEVENV_DIR/devenv.json"
+    elif [[ -f devenv.box ]]; then
+      ${pkgs.snowfallorg.dotbox}/bin/dotbox compile devenv.box --output "$DEVENV_DIR/devenv.json"
     else
       [[ -f "$DEVENV_DIR/devenv.json" ]] && rm "$DEVENV_DIR/devenv.json"
     fi
