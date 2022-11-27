@@ -30,7 +30,7 @@ pkgs.writeScriptBin "devenv" ''
     if [[ -f devenv.yaml ]]; then
       cat devenv.yaml | ${pkgs.yaml2json}/bin/yaml2json > "$DEVENV_DIR/devenv.json"
     elif [[ -f devenv.box ]]; then
-      ${pkgs.snowfallorg.dotbox}/bin/dotbox compile devenv.box --output "$DEVENV_DIR/devenv.json"
+      LOG_LEVEL=SILENT ${pkgs.snowfallorg.dotbox}/bin/dotbox compile devenv.box --output "$DEVENV_DIR/devenv.json"
     else
       [[ -f "$DEVENV_DIR/devenv.json" ]] && rm "$DEVENV_DIR/devenv.json"
     fi
