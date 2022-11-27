@@ -1,7 +1,25 @@
 { pkgs, nix, ... }:
 let
-  examples = ../examples;
   lib = pkgs.lib;
+  examples = ../examples;
+  exampleDirectories =
+    lib.filterAttrs
+      (name: value:
+        value == "directory"
+      )
+      (builtins.readDir examples);
+  simpleExamples = [
+    "simple"
+    "simple-nix"
+    "simple-remote"
+  ];
+  prioritizedExamples =
+    simpleExamples ++ (
+      builtins.filter
+        (name: !(builtins.elem name simpleExamples))
+        (builtins.attrNames exampleDirectories)
+    );
+  exampleNames = builtins.concatStringsSep " " prioritizedExamples;
   version = lib.removeSuffix "\n" (builtins.readFile ./modules/latest-version);
 in
 pkgs.writeScriptBin "devenv" ''
@@ -19,8 +37,8 @@ pkgs.writeScriptBin "devenv" ''
   CUSTOM_NIX=${nix.packages.${pkgs.system}.nix}
 
   function assemble {
-    if [[ ! -f devenv.nix ]]; then
-      echo "devenv.nix does not exist. Maybe you want to run first $ devenv init"
+    if [[ ! -f devenv.nix ]] && [[ ! -f devenv.box ]]; then
+      echo "devenv.nix or devenv.box does not exist. Maybe you want to run first $ devenv init"
     fi
 
     export DEVENV_DIR="$(pwd)/.devenv"
@@ -110,19 +128,19 @@ pkgs.writeScriptBin "devenv" ''
         cd "$target"
       fi
 
-      if [[ -f devenv.nix || -f devenv.yaml || -f .envrc ]]; then
-        echo "Aborting since devenv.nix, devenv.yaml or .envrc already exist."
+      if [[ -f devenv.nix || -f devenv.yaml || -f devenv.box || -f .envrc ]]; then
+        echo "Aborting since devenv.nix, devenv.yaml, devenv.box, or .envrc already exist."
         exit 1
       fi
 
       # TODO: allow selecting which example and list them
-      example=simple
-      echo "Creating .envrc"
-      cat ${examples}/$example/.envrc > .envrc
-      echo "Creating devenv.nix"
-      cat ${examples}/$example/devenv.nix > devenv.nix 
-      echo "Creating devenv.yaml"
-      cat ${examples}/$example/devenv.yaml > devenv.yaml
+      echo "Choose a template:"
+      example=$(${pkgs.gum}/bin/gum choose --height=15 --cursor.foreground=4 --item.foreground=7 --selected.foreground=4 ${exampleNames})
+      # Rewrite the last line to reflect the user's choice
+      echo -e "\\e[1A\\e[2KChoose a template: $example"
+
+      echo "Copying configuration"
+      cp -t . --no-preserve=ownership,mode ${examples}/$example/* ${examples}/$example/.envrc
       echo "Appending .devenv* and devenv.local.nix to .gitignore"
       echo ".devenv*" >> .gitignore
       echo "devenv.local.nix" >> .gitignore
